@@ -7,7 +7,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
 
-const API = 'http://localhost:3001/api';
+const API = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const parseResponse = async (res) => {
     const text = await res.text();

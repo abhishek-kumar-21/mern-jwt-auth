@@ -8,7 +8,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const router = require("./routes/index")
 
-app.use(cors());
+// Allow CORS for development and production frontend URL
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
+    credentials: true,
+}));
 app.use(express.json());
 
 app.get('/', (req, res) => {
