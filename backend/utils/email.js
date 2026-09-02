@@ -1,4 +1,9 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// CRITICAL FIX FOR RENDER: Force Node.js to use IPv4. 
+// Render's network cannot route IPv6 to Gmail, which causes the ENETUNREACH and ETIMEDOUT errors.
+dns.setDefaultResultOrder('ipv4first');
 
 const transporter = nodemailer.createTransport({
     host: 'smtp.gmail.com',
@@ -8,15 +13,16 @@ const transporter = nodemailer.createTransport({
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_PASS,
     },
+    logger: true, // Log all SMTP traffic
+    debug: true,  // Show debug output
+    // Sometimes Render struggles with IPv6 to Gmail, this can help:
+    tls: {
+        rejectUnauthorized: false
+    }
 });
 
 /**
- * Send an OTP email using Mailtrap
- * @param {Object} params
- * @param {string} params.to       - Recipient email
- * @param {string} params.name     - Recipient first name
- * @param {string} params.otp      - The plain 6-digit OTP
- * @param {string} params.type     - 'email_verification' | 'reset_password'
+ * Send an OTP email using Gmail
  */
 const sendOtpEmail = async ({ to, name, otp, type }) => {
     const isVerification = type === 'email_verification';
@@ -54,12 +60,19 @@ const sendOtpEmail = async ({ to, name, otp, type }) => {
       </div>
     </div>`;
 
-    await transporter.sendMail({
-        from: `"NodeApp Auth" <${process.env.GMAIL_USER}>`,
-        to,
-        subject,
-        html,
-    });
+    console.log(`[sendOtpEmail] Attempting to send email to ${to}...`);
+    try {
+        const info = await transporter.sendMail({
+            from: `"NodeApp Auth" <${process.env.GMAIL_USER}>`,
+            to,
+            subject,
+            html,
+        });
+        console.log(`[sendOtpEmail] Success! Message ID: ${info.messageId}`);
+    } catch (err) {
+        console.error(`[sendOtpEmail] CRITICAL ERROR sending email to ${to}:`, err);
+        throw err;
+    }
 };
 
 module.exports = { sendOtpEmail };
